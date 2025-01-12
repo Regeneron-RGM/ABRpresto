@@ -97,7 +97,7 @@ Outputs
     return fit_results, threshold
 
 
-def fit_sigmoid(x, y, y_err=None, bounds=None):
+def fit_sigmoid(x, y, y_err=None, bounds=None, calc_yfit=True):
     if bounds is None:
         bounds_ = (-np.inf, np.inf)
     elif bounds == 'increasing, midpoint within one step of x range':
@@ -138,9 +138,12 @@ def fit_sigmoid(x, y, y_err=None, bounds=None):
         print(f'Fit failed, using default {Pinit}')
         P = Pinit
 
-    yfit = sigmoid(x, *P)
-    sse = np.sum((yfit - y)**2)
-    return {'params': P, 'yfit': yfit, 'sse': sse}
+    if calc_yfit:
+        yfit = sigmoid(x, *P)
+        sse = np.sum((yfit - y)**2)
+        return {'params': P, 'yfit': yfit, 'sse': sse}
+    else:
+        return P
 
 
 def sigmoid_find_initial_params(x, y, bounds=None, bounds_=None):
@@ -174,7 +177,7 @@ def sigmoid_get_threshold(criterion, amplitude, slope, x0, baseline):
     return x0 - np.log(amplitude / (criterion - baseline) - 1)/slope
 
 
-def fit_power_law(x, y, y_err=None, bounds=None):
+def fit_power_law(x, y, y_err=None, bounds=None, calc_yfit=True):
     x = np.array(x)
     if np.min(x) == 0:
         offset = 1
@@ -206,16 +209,18 @@ def fit_power_law(x, y, y_err=None, bounds=None):
     except Exception as E:
         pass
 
-    yfit = power_law(x, *P)
-    sse = np.sum((yfit - y) ** 2)
-    sstot = np.sum((y - y.mean()) ** 2)
-    r2 = 1 - sse / sstot
+    if calc_yfit:
+        yfit = power_law(x, *P)
+        sse = np.sum((yfit - y) ** 2)
+        sstot = np.sum((y - y.mean()) ** 2)
+        r2 = 1 - sse / sstot
 
-    n = len(y)
-    free_params = len(P)
-    adj_r2 = 1 - (((1 - r2) * (n - 1)) / (n - free_params - 1))
-
-    return {'params': P, 'yfit': yfit, 'sse': sse, 'adj_r2': adj_r2}
+        n = len(y)
+        free_params = len(P)
+        adj_r2 = 1 - (((1 - r2) * (n - 1)) / (n - free_params - 1))
+        return {'params': P, 'yfit': yfit, 'sse': sse, 'adj_r2': adj_r2}
+    else:
+        return P
 
 
 def power_law_find_initial_params(x, y, bounds=None):
