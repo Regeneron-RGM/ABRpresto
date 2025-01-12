@@ -9,7 +9,7 @@ from ABRpresto import utils
 from ABRpresto.loader import LOADERS
 
 
-def run_fit(path, loader, reprocess=False, XCsubargs=None, frequencies=None):
+def run_fit(path, loader, reprocess=False, XCsubargs=None, frequencies=None, fit_name='ABRpresto'):
     path = Path(path)
     if type(loader) is str:
         loader = LOADERS[loader]
@@ -39,21 +39,22 @@ def run_fit(path, loader, reprocess=False, XCsubargs=None, frequencies=None):
                 if freq not in frequencies:
                     print(f"  skipping {freq:.0f} Hz")
                     continue
-            fig_filename = save_path / f'{path.stem}_ABRpresto_fit {freq:.0f}.png'
-            json_filename = save_path / f'{path.stem}_ABRpresto_fit {freq:.0f}.json'
+            fig_filename = save_path / f'{path.stem}_{fit_name}_fit {freq:.0f}.png'
+            json_filename = save_path / f'{path.stem}_{fit_name}_fit {freq:.0f}.json'
             if not reprocess and fig_filename.exists() and json_filename.exists():
-                print(f"  {freq:.0f} Hz already fit with ABRpresto")
+                print(f"  {freq:.0f} Hz already fit with {fit_name}")
                 continue
             print(f"  processing {freq:.0f} Hz")
         else:
-            fig_filename = save_path / f'{path.stem}_ABRpresto_fit.png'
-            json_filename = save_path / f'{path.stem}_ABRpresto_fit.json'
+            fig_filename = save_path / f'{path.stem}_{fit_name}_fit.png'
+            json_filename = save_path / f'{path.stem}_{fit_name}_fit.json'
             if not reprocess and fig_filename.exists() and json_filename.exists():
-                print(f"  already fit with ABRpresto")
+                print(f"  already fit with {fit_name}")
                 continue
             print(f"  processing")
 
-        fit_results, figure = XCsub.estimate_threshold(freq_df, **XCsubargs)
+        # fit_results, figure = XCsub.estimate_threshold(freq_df, **XCsubargs)
+        fit_results, figure = XCsub.estimate_threshold_by_Ntrials(freq_df, **XCsubargs)
         fit_results['ABRpresto version'] = ABRpresto.get_version()
 
         print(f"    threshold is {fit_results['threshold']:.1f}, fit with: {fit_results['status_message']}")
