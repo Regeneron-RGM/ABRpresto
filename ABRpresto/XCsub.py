@@ -506,13 +506,15 @@ Parameters
                 thresholds[ishuf] = utils.power_law_get_threshold(XC0m_threshold, *power_law_fit_params)
             elif fit_XC0m['bestFitType'] in ['all below criterion, threshold is inf',
                                              "most below criterion, but couldn't fit, threshold is inf",
-                                             'all above criterion, threshold is -inf']:
+                                             'all above criterion, threshold is -inf', None]:
                 fit_XC0m_, threshold_XC0m_ = utils.fit_sigmoid_power_law(levels, xc0[:, ishuf], XC0m_threshold,
                                                                          sigbounds=XC0m_sigbounds,
                                                                          plbounds=XC0m_plbounds)
                 thresholds[ishuf] = threshold_XC0m_
             else:
-                raise RuntimeError('fix')
+                import pdb
+                pdb.set_trace()
+                raise RuntimeError(f"fix. bestFitType is {fit_XC0m['bestFitType']}")
             a=2
 
         thresholds.mean()
