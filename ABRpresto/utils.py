@@ -308,6 +308,68 @@ def Psi_to_csv(Psi_data_path, target_path, reprocess=False, load_options=None):
         print(f"    wrote {csv_path}")
 
 
+def load_fits_Ntrials(pth, save=True, algorithm = 'ABRpresto'):
+    """
+            Loads fits by the algorithm specified stored in .json files, and returns dataframe. Optionally saves to csv.
+
+    Parameters
+        ----------
+        pth: string. Path within which to search (recursively) for .json files to load
+        algorithm: string, default ABRpresto. Algorithm to load data fromy: data to fit. Filenames are expected to be in the format:
+             *_{algorithm}_fit*.json
+        save: bool, default True. If True save loaded dataframe to csv in pth.
+
+    Outputs
+        ----------
+        df: dataframe of fitted threshold and some metadata. Edit this function to load more metadata if wanted.
+
+        """
+    mouse_num = []
+    timepoint = []
+    ear = []
+    frequency = []
+    threshold = []
+    thresholds_by_resample_mean = []
+    thresholds_by_resample_std = []
+    threshold_nans = []
+    noise = []
+    status = []
+    status_msg = []
+    pths = []
+    for filename in Path(pth).glob(f'**/*_{algorithm}_fit*.json'):
+        if 'Copy' in str(filename):
+            continue
+        D = json.load(open(filename))
+        threshold.append(np.array(D['threshold']))
+        threshold_nans.append(np.array(D['thresholds_nans']))
+        thresholds_by_resample_mean.append(np.array(D['thresholds_by_resample_mean']))
+        thresholds_by_resample_std.append(np.array(D['thresholds_by_resample_std']))
+        noise.append(D['noise_random_inv_RMS'])
+        if True:
+            mouse_num.append(int(str(filename).split('\\')[-2].split('_')[1].split(' ')[0]))
+            timepoint.append(0)
+            ear.append('l')
+            frequency.append(int(str(filename).split('\\')[-1].split('_')[0][:-2]))
+        else:
+            mouse_num.append(int(str(filename).split('\\')[-1].split('_')[0][5:]))
+            timepoint.append(int(str(filename).split('\\')[-1].split('_')[1][9:]))
+            ear.append(str(filename).split('\\')[-1].split('_')[2].split(' ')[0])
+            frequency.append(int(str(filename).split(' ')[-1].split('.')[0]))
+        status.append(D['status'])
+        status_msg.append(D['status_message'])
+        pths.append(filename.parent.joinpath(filename.name.replace('.json','.png')))
+
+    df = pd.DataFrame(
+        {'threshold': threshold, 'thresholds_by_resample_mean': thresholds_by_resample_mean,
+         'thresholds_by_resample_std': thresholds_by_resample_std, 'threshold_nans':threshold_nans,
+         'noise':noise, 'id': mouse_num, 'timepoint': timepoint, 'ear': ear, 'frequency': frequency,
+         'status': status, 'status_message': status_msg, 'pth': pths})
+    if save:
+        save_pth = pth + f'{algorithm} thresholds.csv'
+        df.to_csv(save_pth, index=False)
+        print(f'Saved {len(df)} thresholds to {save_pth}')
+    return df
+
 def load_fits(pth, save=True, algorithm = 'ABRpresto'):
     """
             Loads fits by the algorithm specified stored in .json files, and returns dataframe. Optionally saves to csv.
