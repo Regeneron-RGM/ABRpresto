@@ -5,8 +5,8 @@ id                 animal ID (ranges from 0 to 350)
 timepoint          ABR testing timepoint                                   ordinal, no unit
                    for animals tested once, timepoint=0
                    for animals tested more, timepoint increases ordinally
-ear                left /right	
-frequency          tone-pip frequencyHz
+ear                left / right	
+frequency          tone-pip frequency                                      Hz
 status             ABR presto status (success/failure)	
 status_message     type of curve fit and other status messages	
 pth                path of the output file	
