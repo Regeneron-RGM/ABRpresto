@@ -65,8 +65,3 @@ for exi in range(2,3):
         ABRpresto.utils.write_json(fit_results, jsonname)
         print(f'Fit results saved to {jsonname}')
         plt.close('all')
-
-    # In the left column the figures show mean +/- SE of all trials in black, and median (or mean, depending on AVmode) for
-    # the two subsets. Waveforms are normalized (for each level all 3 lines are scaled by the peak-to-peak of the mean
-    # of all trials). The right hand side shows mean correlation coefficient vs stimulus level. Sigmoid and power law fits
-    # to this data are shown in green and purple. The threshold is shown by the pink dashed line.
