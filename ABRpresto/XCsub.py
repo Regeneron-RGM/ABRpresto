@@ -13,7 +13,7 @@ colors = plt.get_cmap('tab10').colors
 def estimate_threshold_by_Ntrials(epochs, N_trials_one_polarity=256*.125*np.arange(2,9), seed=0,
                                   second_filter='pre-average',
                                   second_filter_settings={'highpass': 300, 'lowpass': 3000, 'order': 1},
-                                  plot_results=False, N_resamples=50, **kwargs):
+                                  plot_results=False, N_resamples=50, paper_plot=False, **kwargs):
     N_trials_one_polarity = N_trials_one_polarity.astype(int)
     Needed_N_per_polarity = 256
 
@@ -81,9 +81,13 @@ def estimate_threshold_by_Ntrials(epochs, N_trials_one_polarity=256*.125*np.aran
     status_messages = np.full((len(N_trials_one_polarity), N_resamples), "", dtype=object)
     for i, N_trials_one_polarity_ in enumerate(N_trials_one_polarity[:-1]):
         print(i)
+        if paper_plot and (i==0):
+            all_masks = []
         for j in range(N_resamples):
             keep_ind_masks =  np.zeros(Needed_N_per_polarity, dtype=bool)
             keep_ind_masks[rn.choice(Needed_N_per_polarity, N_trials_one_polarity_, replace=False)] = True
+            if paper_plot and (i==0):
+                all_masks.append(keep_ind_masks)
             fit_results_, fig_handle_ = estimate_threshold(epochs, plot_results=plot_results,
                                                            keep_ind_masks=(keep_ind_masks, keep_ind_masks),
                                                            second_filter=None, **kwargs)
@@ -113,70 +117,94 @@ def estimate_threshold_by_Ntrials(epochs, N_trials_one_polarity=256*.125*np.aran
     fit_results['all_status_messages_same'] = len(np.unique(status_messages)) == 1
     thresholds[np.isinf(thresholds) & (thresholds > 0)] = levels.max() + 5
     thresholds[np.isinf(thresholds) & (thresholds < 0)] = levels.min() - 5
-    xbins = np.hstack((N_trials_one_polarity,N_trials_one_polarity[-1]+np.diff(N_trials_one_polarity[:2])))-np.diff(N_trials_one_polarity[:2])/2
-    ylims = (thresholds[:].min(),thresholds[:].max())
-    if (ylims[0] >= (thresholds[-1,0]-7)) and (ylims[1] <= (thresholds[-1,0]+15)):
-        ylims = [thresholds[-1,0]-7, thresholds[-1,0]+15]
-        adj_lims = False
+    if paper_plot:
+        order = thresholds_by_resample_std[0,:].argsort()
+        ranks = order.argsort()
+        imedian = np.where(ranks == 25)[0][0]
+        keep_ind_masks = all_masks[imedian]
+        fit_results_lowN, fig_handle_lowN = estimate_threshold(epochs, plot_results=True,
+                                                       keep_ind_masks=(keep_ind_masks, keep_ind_masks),
+                                                       second_filter=None, **kwargs)
+        f, ax = plt.subplots(1, figsize=(3, 5))
+        xbins = np.hstack((N_trials_one_polarity,N_trials_one_polarity[-1]+np.diff(N_trials_one_polarity[:2])))-np.diff(N_trials_one_polarity[:2])/2
+        ylims2 = [.8, 4]
+        ybins2 = np.linspace(ylims2[0], ylims2[1], 25)
+
+        h = ax.hist2d(np.tile(N_trials_one_polarity*2, (N_resamples, 1)).T.flatten(),
+                       thresholds_by_resample_std.flatten(), bins=(xbins*2, ybins2), cmap='gray_r')
+        h[3].set_clim((0, N_resamples * 2 / 3))
+        ax.set_xticks(N_trials_one_polarity*2)
+        ax.set_yticks(range(1,5))
+        ax.set_xlabel('N trials')
+        ax.set_ylabel('SD{threshold} (dB)')
+        fig_handle = [fig_handle, fig_handle_lowN, f]
+        for i,fh in enumerate(fig_handle):
+            fh.savefig(figure_path.replace('.png',f'{i}.pdf'))
     else:
-        adj_lims = True
-        if ylims[0] == ylims[1]:
-            ylims = 10*np.array([-1,1])+ylims
+        xbins = np.hstack((N_trials_one_polarity,N_trials_one_polarity[-1]+np.diff(N_trials_one_polarity[:2])))-np.diff(N_trials_one_polarity[:2])/2
+        ylims = (thresholds[:].min(),thresholds[:].max())
+        if (ylims[0] >= (thresholds[-1,0]-7)) and (ylims[1] <= (thresholds[-1,0]+15)):
+            ylims = [thresholds[-1,0]-7, thresholds[-1,0]+15]
+            adj_lims = False
         else:
-            ylims = np.diff(ylims)*.1*np.array([-1,1])+ylims
-    ybins = np.linspace(ylims[0],ylims[1],20)
-    fig_handle.axes[0].set_position([.07,.07,.4007,.63])
-    fig_handle.axes[1].set_position([.5, .07, .5, .63])
-    #plt.figure()
-    ax = fig_handle.add_axes([.07,.75,.29,.25])
-    ax2 = fig_handle.add_axes([.36, .75, .29, .25])
-    ax3 = fig_handle.add_axes([.71, .75, .29, .25])
-    h=ax.hist2d(np.tile(N_trials_one_polarity, (N_resamples, 1)).T.flatten(), thresholds.flatten(), bins=(xbins, ybins))
-    # plt.colorbar(h[3])
-    h[3].set_clim((0,N_resamples*2/5))
-    ax.set_xlabel('Ntrials per subaverage')
-    ax.set_ylabel('Threshold (dB SPL)')
+            adj_lims = True
+            if ylims[0] == ylims[1]:
+                ylims = 10*np.array([-1,1])+ylims
+            else:
+                ylims = np.diff(ylims)*.1*np.array([-1,1])+ylims
+        ybins = np.linspace(ylims[0],ylims[1],20)
+        fig_handle.axes[0].set_position([.07,.07,.4007,.63])
+        fig_handle.axes[1].set_position([.5, .07, .5, .63])
+        #plt.figure()
+        ax = fig_handle.add_axes([.07,.75,.29,.25])
+        ax2 = fig_handle.add_axes([.36, .75, .29, .25])
+        ax3 = fig_handle.add_axes([.71, .75, .29, .25])
+        h=ax.hist2d(np.tile(N_trials_one_polarity, (N_resamples, 1)).T.flatten(), thresholds.flatten(), bins=(xbins, ybins))
+        # plt.colorbar(h[3])
+        h[3].set_clim((0,N_resamples*2/5))
+        ax.set_xlabel('Ntrials per subaverage')
+        ax.set_ylabel('Threshold (dB SPL)')
 
-    epochs_random = epochs.copy()
-    signs = np.hstack((np.ones(256), -1 * np.ones(256)))
-    noise_estimates = []
-    for n in range(5):
-        for level in levels:
-            np.random.shuffle(signs)
-            epochs_random.loc[(slice(None), level), :] = (epochs_random.loc[(slice(None),level),:] *
-                                                    np.tile(signs, (epochs.shape[1], 1)).T)
-        noise_estimates.append(np.sqrt(np.power(epochs_random.groupby('level').agg('mean').values,2).mean()))
-    fit_results['noise_random_inv_RMS'] = np.mean(noise_estimates)
-    ax.text(1, 1, f"Noise {fit_results['noise_random_inv_RMS']*1e6:.3f} uV", horizontalalignment='right',
-         verticalalignment='top', transform=ax.transAxes, color='orange')
-    if adj_lims:
-        ax.text(1, .8, f"Adj lims", horizontalalignment='right',
-                verticalalignment='top', transform=ax.transAxes, color='orange')
-    # f,ax2 = plt.subplots(1,3)
-    # h=ax2.hist2d(np.tile(N_trials_one_polarity, (N_resamples, 1)).T.flatten(), thresholds.flatten(), bins=(xbins, ybins))
-    # h[3].set_clim((0,N_resamples*2/5))
-    h=ax2.hist2d(np.tile(N_trials_one_polarity, (N_resamples, 1)).T.flatten(), thresholds_by_resample_mean.flatten(), bins=(xbins, ybins))
-    h[3].set_clim((0,N_resamples*2/5))
-    ax2.set_yticklabels('')
+        epochs_random = epochs.copy()
+        signs = np.hstack((np.ones(256), -1 * np.ones(256)))
+        noise_estimates = []
+        for n in range(5):
+            for level in levels:
+                np.random.shuffle(signs)
+                epochs_random.loc[(slice(None), level), :] = (epochs_random.loc[(slice(None),level),:] *
+                                                        np.tile(signs, (epochs.shape[1], 1)).T)
+            noise_estimates.append(np.sqrt(np.power(epochs_random.groupby('level').agg('mean').values,2).mean()))
+        fit_results['noise_random_inv_RMS'] = np.mean(noise_estimates)
+        ax.text(1, 1, f"Noise {fit_results['noise_random_inv_RMS']*1e6:.3f} uV", horizontalalignment='right',
+             verticalalignment='top', transform=ax.transAxes, color='orange')
+        if adj_lims:
+            ax.text(1, .8, f"Adj lims", horizontalalignment='right',
+                    verticalalignment='top', transform=ax.transAxes, color='orange')
+        # f,ax2 = plt.subplots(1,3)
+        # h=ax2.hist2d(np.tile(N_trials_one_polarity, (N_resamples, 1)).T.flatten(), thresholds.flatten(), bins=(xbins, ybins))
+        # h[3].set_clim((0,N_resamples*2/5))
+        h=ax2.hist2d(np.tile(N_trials_one_polarity, (N_resamples, 1)).T.flatten(), thresholds_by_resample_mean.flatten(), bins=(xbins, ybins))
+        h[3].set_clim((0,N_resamples*2/5))
+        ax2.set_yticklabels('')
 
-    ylims2 = (thresholds_by_resample_std.min(), thresholds_by_resample_std.max())
-    if (ylims2[0] >= 0) and (ylims2[1] <= 5):
-        ylims2 = [0, 5]
-        adj_lims = False
-    else:
-        adj_lims = True
-        if ylims2[0] == ylims2[1]:
-            ylims2 = 10 * np.array([-1, 1]) + ylims2
+        ylims2 = (thresholds_by_resample_std.min(), thresholds_by_resample_std.max())
+        if (ylims2[0] >= 0) and (ylims2[1] <= 5):
+            ylims2 = [0, 5]
+            adj_lims = False
         else:
-            ylims2 = np.diff(ylims2) * .1 * np.array([-1, 1]) + ylims2
-    ybins2 = np.linspace(ylims2[0], ylims2[1], 25)
+            adj_lims = True
+            if ylims2[0] == ylims2[1]:
+                ylims2 = 10 * np.array([-1, 1]) + ylims2
+            else:
+                ylims2 = np.diff(ylims2) * .1 * np.array([-1, 1]) + ylims2
+        ybins2 = np.linspace(ylims2[0], ylims2[1], 25)
 
-    h=ax3.hist2d(np.tile(N_trials_one_polarity, (N_resamples, 1)).T.flatten(), thresholds_by_resample_std.flatten(), bins=(xbins, ybins2))
-    h[3].set_clim((0,N_resamples*2/5))
-    if adj_lims:
-        ax3.text(1, 1, f"Adj lims", horizontalalignment='right',
-                verticalalignment='top', transform=ax3.transAxes, color='orange')
-    ax3.set_ylabel('std(threshold)')
+        h=ax3.hist2d(np.tile(N_trials_one_polarity, (N_resamples, 1)).T.flatten(), thresholds_by_resample_std.flatten(), bins=(xbins, ybins2))
+        h[3].set_clim((0,N_resamples*2/5))
+        if adj_lims:
+            ax3.text(1, 1, f"Adj lims", horizontalalignment='right',
+                    verticalalignment='top', transform=ax3.transAxes, color='orange')
+        ax3.set_ylabel('std(threshold)')
 
     return fit_results, fig_handle
 
@@ -193,7 +221,8 @@ def estimate_threshold(epochs, seed=0, pst_range=None,
                        round_results=True, human_threshold=None,
                        plot_results=True,
                        keep_ind_masks=None,
-                       fit_each_resample=False):
+                       fit_each_resample=False,
+                       keep_fit_each_resample_fit_params=False):
     """
     This is code to algorithmically threshold ABR data as described in Shaheen et al 2024.
     Thresholds are generated by:
@@ -489,10 +518,16 @@ Parameters
     if fit_each_resample:
         thresholds = np.zeros(N_shuffles)
         thresholds_nans = []
+        if keep_fit_each_resample_fit_params:
+            sigmoid_fit_params = []
+        else:
+            sigmoid_fit_params = None
         for ishuf in range(N_shuffles):
             if fit_XC0m['bestFitType'] == 'sigmoid':
-                sigmoid_fit_params = utils.fit_sigmoid(levels, xc0[:,ishuf], bounds=XC0m_sigbounds, calc_yfit=False)
-                thresholds[ishuf] = utils.sigmoid_get_threshold(XC0m_threshold, *sigmoid_fit_params)
+                sigmoid_fit_params_ = utils.fit_sigmoid(levels, xc0[:,ishuf], bounds=XC0m_sigbounds, calc_yfit=False)
+                thresholds[ishuf] = utils.sigmoid_get_threshold(XC0m_threshold, *sigmoid_fit_params_)
+                if keep_fit_each_resample_fit_params:
+                    sigmoid_fit_params.append(sigmoid_fit_params_)
                 if np.isnan(thresholds[ishuf]):
                     warnings.warn(f'Threshold is nan for shuffle {ishuf}/{N_shuffles}, running full fitter')
                     fit_XC0m_, threshold_XC0m_ = utils.fit_sigmoid_power_law(levels, xc0[:, ishuf], XC0m_threshold,
@@ -582,6 +617,8 @@ Parameters
         fit_results['threshold_std'] = np.round(thresholds.std(), 2)
         fit_results['thresholds'] = np.round(thresholds, 2)
         fit_results['thresholds_nans'] = thresholds_nans
+        if keep_fit_each_resample_fit_params:
+            fit_results['sigmoid_fit_params'] = sigmoid_fit_params
 
     if not calc_XC0m_only:
         fit_results['threshold_XCp_near_0'] = threshold_XCp_near_0
@@ -605,7 +642,7 @@ Parameters
             if fit_each_resample:
                 fig_handle = plot_fit_each_resample(levels, levels_, xc0, ABRtime, epochs_means,
                        epochs_sems, pst_range, fit_XC0m, thresholds=thresholds, norm_waveforms=True,
-                       human_threshold=human_threshold, avmode=avmode, criterion=XC0m_threshold)
+                       human_threshold=human_threshold, avmode=avmode, criterion=XC0m_threshold, fit_params=sigmoid_fit_params)
             else:
                 fig_handle = plot_fit(levels, levels_, xc0, ABRtime, epochs_means,
                        epochs_sems, pst_range, fit_XC0m, norm_waveforms=True,
@@ -772,7 +809,7 @@ def plot_fit(levels, levels_, xc0, ABRtime, epochs_means, epochs_sems, pst_range
     return fig_handle
 
 def plot_fit_each_resample(levels, levels_, xc0, ABRtime, epochs_means, epochs_sems, pst_range, fit_XC0m,
-             thresholds=None, norm_waveforms=True, human_threshold=None, avmode='mean', criterion=0.3):
+             thresholds=None, norm_waveforms=True, human_threshold=None, avmode='mean', criterion=0.3, fit_params=None):
     # In the left column the figures show mean +/- SE of all trials in black, and median (or mean, depending on AVmode)
     # for the two subsets. Waveforms are normalized (for each level all 3 lines are scaled by the peak-to-peak of
     # the mean of all trials). The right hand side shows mean correlation coefficient vs stimulus level. Sigmoid and
@@ -871,6 +908,12 @@ def plot_fit_each_resample(levels, levels_, xc0, ABRtime, epochs_means, epochs_s
                 ls = '-'
             ax[1].plot(levels, fit_XC0m['power_law_fit']['yfit'], color=colors[4], lw=lw, label=l, ls=ls)
 
+        if fit_params is not None:
+            levs = np.arange(levels[0], levels[-1] + .1, .1)
+            for fit_param in fit_params:
+                yfit = utils.sigmoid(levs, *fit_param)
+                ax[1].plot(levs, yfit, color=colors[2]+np.array([0,.15,0]), lw=.2, ls='-', alpha=.1)
+
         if fit_XC0m['threshold'] is not None:
             if fit_XC0m['threshold'] is np.inf:
                 l = 'thresh=inf\n(all levels below criterion)'
@@ -885,11 +928,12 @@ def plot_fit_each_resample(levels, levels_, xc0, ABRtime, epochs_means, epochs_s
             ax[0].set_clip_on(False)
             if thresholds is not None:
                 h = ax[1].violinplot(thresholds, [criterion], widths=[.1],showextrema=False, points=200,
-                                     showmeans=True, vert=False)# mpl 3.10 on use: orientation='horizontal')
+                                     showmeans=False, vert=False)# mpl 3.10 on use: orientation='horizontal')
                 for pc in h['bodies']:
                     pc.set_facecolor('red')
                     # pc.set_edgecolor('black')
                     pc.set_alpha(.5)
+
         ax[1].axhline(criterion, color='k', linestyle='--', linewidth=.5)
         ax[1].text(ax[1].get_xlim()[1], criterion, 'criterion', horizontalalignment='right', fontsize=10*fs_scale)
         ax[1].set_ylabel('Correlation Coefficient', fontsize=fs_labels)
