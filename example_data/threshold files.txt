@@ -1,0 +1,22 @@
+ABR presto thresholds		
+column name        description                                             unit
+threshold          ABR presto threshold                                    dB SPL
+id                 animal ID (ranges from 0 to 350)	
+timepoint          ABR testing timepoint                                   ordinal, no unit
+                   for animals tested once, timepoint=0
+                   for animals tested more, timepoint increases ordinally
+ear                left / right	
+frequency          tone-pip frequency                                      Hz
+status             ABR presto status (success/failure)	
+status_message     type of curve fit and other status messages	
+pth                path of the output file	
+		
+Manual thresholds		
+id                 same as above	
+timepoint          same as above	
+ear                same as above	
+frequency          same as above	
+min_level          minimum tone-pip level presented                        dB SPL
+max_level          maximum tone-pip level presented                        dB SPL
+Manual thresholds  Manual threshold                                        dB SPL
+

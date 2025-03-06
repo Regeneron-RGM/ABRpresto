@@ -1,0 +1,29 @@
+example_data	
+*During the recording, stimuli were presented in interleaved order such that a train of tone-pips containing a single presentation of each level and frequency was repeated in an interleaved ramp paradigm (as described in Buran et al. 2020)
+*Each csv file contains single trial waveforms for one frequency and all levels tested
+*Example 1: 8 kHz
+*Example 2: 32 kHz
+*Example 3: 4 kHz
+*Example 4: 22.6 kHz
+*Example 5: 16 kHz"			
+
+csv file description				
+column name               description                                       unit		
+level                     sound pressure level                              dB SPL		
+polarity                  polarity of the stimulus (+1 or -1)               no unit		
+t0                        time at stimulus onset for each tone-pip          second		
+all following columns     time (t=0 tone-pip onset)                         second		
+all following rows        ABR signal                                        volt	
+				
+example_data_psi	*matching raw data as in example_data in Psi format			
+				
+erp_metadata.csv file description		
+column name               description                                       unit		
+t0                        time at stimulus onset for each tone-pip          second		
+target_tone_frequency     frequency of the stimulus                         Hz
+target_tone_level         sound pressure level                              dB SPL		
+target_tone_polarity      polarity of the stimulus (+1 or -1)               no unit		
+ordering                  ordering method as described in Buran et al. 2020			
+rate                      repetition rate                                   Hz		
+reject_threshold          artifact rejection threshold                      volt		
+averages                  number of single trials                           no unit	
