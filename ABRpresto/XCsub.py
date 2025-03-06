@@ -120,7 +120,7 @@ def estimate_threshold_by_Ntrials(epochs, N_trials_one_polarity=256*.125*np.aran
     if paper_plot:
         order = thresholds_by_resample_std[0,:].argsort()
         ranks = order.argsort()
-        imedian = np.where(ranks == 25)[0][0]
+        imedian = np.where(ranks == round(N_resamples/2))[0][0]
         keep_ind_masks = all_masks[imedian]
         fit_results_lowN, fig_handle_lowN = estimate_threshold(epochs, plot_results=True,
                                                        keep_ind_masks=(keep_ind_masks, keep_ind_masks),
@@ -265,6 +265,21 @@ Parameters
         If True, round results to 3 decimal places
     human_threshold : float
         The threshold as selected by a human rater. Not used in the algorithm, if passed will be indicated on the plots
+    plot_results: bool, default True
+        If True, plot results
+    keep_ind_masks: tuple or list of arrays of bools, or None, default None
+        If None, does nothing
+        If list, should be length 2 (one for each polarity)
+        Each array should be length of the number of trials in each level. False means to not use that trials
+        Used to exclude a consistent set of trials to test effect of reducing SNR on threshold estimate
+    fit_each_resample: bool, default False,
+        If True, fit threshold for each resample set (all levels), returns extra fields in fit results:
+            fit_results['thresholds'] array of thresholds, one for each resample
+            fit_results['threshold_mean'] = mean of this array
+            fit_results['threshold_std'] = std of this array
+            fit_results['thresholds_nans'] = list of inidicies where fit failed
+    keep_fit_each_resample_fit_params: bool, default False
+            If this and fit_each_resample are True, keeps parameters for each fit (to be used for plotting)
 
     --The following parameters are used to control alternate ways of using the same cross-correlation distributions to
       find threshold. Empirically they didn't work as well.
