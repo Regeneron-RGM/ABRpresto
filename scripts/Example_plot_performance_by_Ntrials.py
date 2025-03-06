@@ -70,7 +70,7 @@ ax[2,0].set_ylabel('Threshold Std (dB)\nStd across separate fits per resample')
 ax[2,0].set_xlabel('N resamples')
 ax[2,0].set_xlabel('N trials per subaverage')
 ax[2,1].set_xlabel('Noise level (nV)')
-f.savefig(r'C:\Users\LukeS\Documents\Code\ABRpresto\Ntrials_plots\Thresholds_by_Ntrials_Example_set_difference.png')
+f.savefig(r'Thresholds_by_Ntrials_Example_set_difference.png')
 
 
 
@@ -108,4 +108,4 @@ ax[2,0].set_ylabel('Threshold Std (dB)\nStd across separate fits per resample')
 ax[2,0].set_xlabel('N resamples')
 ax[2,0].set_xlabel('N trials per subaverage')
 ax[2,1].set_xlabel('Noise level (nV)')
-f.savefig(r'C:\Users\LukeS\Documents\Code\ABRpresto\Ntrials_plots\Thresholds_by_Ntrials_Example_set.png')
+f.savefig('Thresholds_by_Ntrials_Example_set.png')
