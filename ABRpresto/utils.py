@@ -97,7 +97,7 @@ Outputs
     return fit_results, threshold
 
 
-def fit_sigmoid(x, y, y_err=None, bounds=None):
+def fit_sigmoid(x, y, y_err=None, bounds=None, calc_yfit=True):
     if bounds is None:
         bounds_ = (-np.inf, np.inf)
     elif bounds == 'increasing, midpoint within one step of x range':
@@ -138,9 +138,12 @@ def fit_sigmoid(x, y, y_err=None, bounds=None):
         print(f'Fit failed, using default {Pinit}')
         P = Pinit
 
-    yfit = sigmoid(x, *P)
-    sse = np.sum((yfit - y)**2)
-    return {'params': P, 'yfit': yfit, 'sse': sse}
+    if calc_yfit:
+        yfit = sigmoid(x, *P)
+        sse = np.sum((yfit - y)**2)
+        return {'params': P, 'yfit': yfit, 'sse': sse}
+    else:
+        return P
 
 
 def sigmoid_find_initial_params(x, y, bounds=None, bounds_=None):
@@ -174,7 +177,7 @@ def sigmoid_get_threshold(criterion, amplitude, slope, x0, baseline):
     return x0 - np.log(amplitude / (criterion - baseline) - 1)/slope
 
 
-def fit_power_law(x, y, y_err=None, bounds=None):
+def fit_power_law(x, y, y_err=None, bounds=None, calc_yfit=True):
     x = np.array(x)
     if np.min(x) == 0:
         offset = 1
@@ -206,16 +209,18 @@ def fit_power_law(x, y, y_err=None, bounds=None):
     except Exception as E:
         pass
 
-    yfit = power_law(x, *P)
-    sse = np.sum((yfit - y) ** 2)
-    sstot = np.sum((y - y.mean()) ** 2)
-    r2 = 1 - sse / sstot
+    if calc_yfit:
+        yfit = power_law(x, *P)
+        sse = np.sum((yfit - y) ** 2)
+        sstot = np.sum((y - y.mean()) ** 2)
+        r2 = 1 - sse / sstot
 
-    n = len(y)
-    free_params = len(P)
-    adj_r2 = 1 - (((1 - r2) * (n - 1)) / (n - free_params - 1))
-
-    return {'params': P, 'yfit': yfit, 'sse': sse, 'adj_r2': adj_r2}
+        n = len(y)
+        free_params = len(P)
+        adj_r2 = 1 - (((1 - r2) * (n - 1)) / (n - free_params - 1))
+        return {'params': P, 'yfit': yfit, 'sse': sse, 'adj_r2': adj_r2}
+    else:
+        return P
 
 
 def power_law_find_initial_params(x, y, bounds=None):
@@ -302,6 +307,68 @@ def Psi_to_csv(Psi_data_path, target_path, reprocess=False, load_options=None):
         freq_df.to_csv(csv_path)
         print(f"    wrote {csv_path}")
 
+
+def load_fits_Ntrials(pth, save=True, algorithm = 'ABRpresto'):
+    """
+            Loads fits by the algorithm specified stored in .json files, and returns dataframe. Optionally saves to csv.
+
+    Parameters
+        ----------
+        pth: string. Path within which to search (recursively) for .json files to load
+        algorithm: string, default ABRpresto. Algorithm to load data fromy: data to fit. Filenames are expected to be in the format:
+             *_{algorithm}_fit*.json
+        save: bool, default True. If True save loaded dataframe to csv in pth.
+
+    Outputs
+        ----------
+        df: dataframe of fitted threshold and some metadata. Edit this function to load more metadata if wanted.
+
+        """
+    mouse_num = []
+    timepoint = []
+    ear = []
+    frequency = []
+    threshold = []
+    thresholds_by_resample_mean = []
+    thresholds_by_resample_std = []
+    threshold_nans = []
+    noise = []
+    status = []
+    status_msg = []
+    pths = []
+    for filename in Path(pth).glob(f'**/*_{algorithm}_fit*.json'):
+        if 'Copy' in str(filename):
+            continue
+        D = json.load(open(filename))
+        threshold.append(np.array(D['threshold']))
+        threshold_nans.append(np.array(D['thresholds_nans']))
+        thresholds_by_resample_mean.append(np.array(D['thresholds_by_resample_mean']))
+        thresholds_by_resample_std.append(np.array(D['thresholds_by_resample_std']))
+        noise.append(D['noise_random_inv_RMS'])
+        if True:
+            mouse_num.append(int(str(filename).split('\\')[-2].split('_')[1].split(' ')[0]))
+            timepoint.append(0)
+            ear.append('l')
+            frequency.append(int(str(filename).split('\\')[-1].split('_')[0][:-2]))
+        else:
+            mouse_num.append(int(str(filename).split('\\')[-1].split('_')[0][5:]))
+            timepoint.append(int(str(filename).split('\\')[-1].split('_')[1][9:]))
+            ear.append(str(filename).split('\\')[-1].split('_')[2].split(' ')[0])
+            frequency.append(int(str(filename).split(' ')[-1].split('.')[0]))
+        status.append(D['status'])
+        status_msg.append(D['status_message'])
+        pths.append(filename.parent.joinpath(filename.name.replace('.json','.png')))
+
+    df = pd.DataFrame(
+        {'threshold': threshold, 'thresholds_by_resample_mean': thresholds_by_resample_mean,
+         'thresholds_by_resample_std': thresholds_by_resample_std, 'threshold_nans':threshold_nans,
+         'noise':noise, 'id': mouse_num, 'timepoint': timepoint, 'ear': ear, 'frequency': frequency,
+         'status': status, 'status_message': status_msg, 'pth': pths})
+    if save:
+        save_pth = pth + f'{algorithm} thresholds.csv'
+        df.to_csv(save_pth, index=False)
+        print(f'Saved {len(df)} thresholds to {save_pth}')
+    return df
 
 def load_fits(pth, save=True, algorithm = 'ABRpresto'):
     """
